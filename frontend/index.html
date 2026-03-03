@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 智能简历分析系统</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="src/style.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container header-inner">
+      <div class="logo">
+        <span class="logo-icon">🤖</span>
+        <span class="logo-text">AI 简历分析系统</span>
+      </div>
+      <nav class="nav-steps">
+        <div class="step active" id="step-nav-1">
+          <span class="step-num">1</span> 上传简历
+        </div>
+        <div class="step-divider"></div>
+        <div class="step" id="step-nav-2">
+          <span class="step-num">2</span> 查看解析
+        </div>
+        <div class="step-divider"></div>
+        <div class="step" id="step-nav-3">
+          <span class="step-num">3</span> 岗位匹配
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main container">
+
+    <!-- ===== STEP 1: Upload ===== -->
+    <section class="card section-upload" id="section-upload">
+      <div class="card-header">
+        <h2>📄 上传简历</h2>
+        <p class="subtitle">支持 PDF 格式，最大 10MB</p>
+      </div>
+
+      <div class="upload-area" id="upload-area">
+        <input type="file" id="file-input" accept=".pdf" class="file-input-hidden" />
+        <div class="upload-placeholder" id="upload-placeholder">
+          <div class="upload-icon">📂</div>
+          <p class="upload-text">拖拽 PDF 文件到此处，或</p>
+          <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
+            选择文件
+          </button>
+        </div>
+        <div class="upload-preview" id="upload-preview" style="display:none">
+          <div class="file-icon">📄</div>
+          <div class="file-info">
+            <span class="file-name" id="file-name"></span>
+            <span class="file-size" id="file-size"></span>
+          </div>
+          <button class="btn-icon" onclick="resetUpload()" title="删除">✕</button>
+        </div>
+      </div>
+
+      <div class="config-section">
+        <label class="config-label">后端 API 地址</label>
+        <div class="input-row">
+          <input
+            type="text"
+            id="api-base-url"
+            class="input"
+            placeholder="https://your-backend.example.com"
+            value=""
+          />
+          <button class="btn btn-secondary" onclick="testConnection()">测试连接</button>
+        </div>
+        <p class="hint">留空则使用 Mock 演示模式（无需后端）</p>
+      </div>
+
+      <div class="action-row">
+        <button class="btn btn-primary btn-lg" id="upload-btn" onclick="uploadResume()">
+          <span id="upload-btn-text">🚀 开始解析</span>
+          <span id="upload-spinner" class="spinner hidden"></span>
+        </button>
+      </div>
+
+      <div id="upload-error" class="alert alert-error hidden"></div>
+    </section>
+
+    <!-- ===== STEP 2: Parsed Results ===== -->
+    <section class="card section-result hidden" id="section-result">
+      <div class="card-header">
+        <h2>✅ 简历解析结果</h2>
+        <div class="badge badge-success" id="resume-id-badge"></div>
+      </div>
+
+      <div class="result-grid">
+        <!-- Basic Info -->
+        <div class="result-panel">
+          <h3 class="panel-title">👤 基本信息</h3>
+          <div class="info-list" id="basic-info-list"></div>
+        </div>
+
+        <!-- Job Intent -->
+        <div class="result-panel">
+          <h3 class="panel-title">💼 求职信息</h3>
+          <div class="info-list" id="job-intent-list"></div>
+        </div>
+
+        <!-- Background -->
+        <div class="result-panel">
+          <h3 class="panel-title">🎓 背景信息</h3>
+          <div class="info-list" id="background-list"></div>
+        </div>
+
+        <!-- Skills -->
+        <div class="result-panel">
+          <h3 class="panel-title">🛠️ 技能标签</h3>
+          <div class="skills-tags" id="skills-tags"></div>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn btn-secondary" onclick="goToStep(1)">← 重新上传</button>
+        <button class="btn btn-primary btn-lg" onclick="goToStep(3)">进行岗位匹配 →</button>
+      </div>
+    </section>
+
+    <!-- ===== STEP 3: Job Matching ===== -->
+    <section class="card section-match hidden" id="section-match">
+      <div class="card-header">
+        <h2>🎯 岗位匹配评分</h2>
+        <p class="subtitle">输入招聘需求，AI 将分析匹配度</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="jd-input">岗位需求描述</label>
+        <textarea
+          id="jd-input"
+          class="textarea"
+          rows="8"
+          placeholder="请粘贴岗位 JD，例如：&#10;岗位：Python 后端工程师&#10;要求：&#10;- 3年以上 Python 开发经验&#10;- 熟悉 FastAPI / Django&#10;- 熟悉 MySQL、Redis&#10;- 有微服务架构经验优先"
+        ></textarea>
+      </div>
+
+      <div class="action-row">
+        <button class="btn btn-secondary" onclick="goToStep(2)">← 查看解析</button>
+        <button class="btn btn-primary btn-lg" id="match-btn" onclick="matchResume()">
+          <span id="match-btn-text">🤖 开始匹配</span>
+          <span id="match-spinner" class="spinner hidden"></span>
+        </button>
+      </div>
+
+      <div id="match-error" class="alert alert-error hidden"></div>
+
+      <!-- Match Results -->
+      <div id="match-result-container" class="match-result-container hidden">
+        <div class="score-hero">
+          <div class="score-ring" id="score-ring">
+            <svg viewBox="0 0 120 120" class="score-svg">
+              <circle cx="60" cy="60" r="50" class="ring-bg" />
+              <circle cx="60" cy="60" r="50" class="ring-fill" id="ring-fill" />
+            </svg>
+            <div class="score-value" id="score-value">0</div>
+          </div>
+          <div class="score-meta">
+            <div class="score-label">综合匹配评分</div>
+            <div class="recommendation-badge" id="recommendation-badge"></div>
+          </div>
+        </div>
+
+        <div class="match-details-grid">
+          <!-- Skill Match -->
+          <div class="match-panel">
+            <h3 class="panel-title">🛠️ 技能匹配</h3>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar">
+                <div class="progress-fill" id="skill-progress"></div>
+              </div>
+              <span class="progress-label" id="skill-rate"></span>
+            </div>
+            <div class="skill-match-lists">
+              <div>
+                <p class="match-list-label match-ok">✅ 已匹配</p>
+                <div class="skills-tags" id="matched-skills"></div>
+              </div>
+              <div>
+                <p class="match-list-label match-miss">❌ 缺失</p>
+                <div class="skills-tags" id="missing-skills"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Experience -->
+          <div class="match-panel">
+            <h3 class="panel-title">📈 经验相关性</h3>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar">
+                <div class="progress-fill" id="exp-progress"></div>
+              </div>
+              <span class="progress-label" id="exp-rate"></span>
+            </div>
+            <div class="ai-analysis" id="ai-analysis"></div>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button class="btn btn-secondary" onclick="goToStep(1)">← 分析新简历</button>
+          <button class="btn btn-outline" onclick="exportResult()">📥 导出结果</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <p>AI 智能简历分析系统 · Powered by 通义千问 &amp; FastAPI</p>
+  </footer>
+
+  <script src="src/app.js"></script>
+</body>
+</html>
