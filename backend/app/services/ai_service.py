@@ -84,20 +84,24 @@ def _call_dashscope(prompt: str, model: str = None) -> str:
         raise RuntimeError("dashscope package not installed. Run: pip install dashscope")
 
 
-ddef _call_openai(prompt: str, model: str = None) -> str:
+# 修改 backend/app/services/ai_service.py 中的相关部分
+
+def _call_openai(prompt: str, model: str = None) -> str:
     """调用 OpenAI 兼容接口，适配 Mammouth AI 等第三方聚合商"""
     try:
         from openai import OpenAI
         import os
 
-        # 读取环境变量
+        # 1. 优先从环境变量读取 API Key 和 Base URL
         api_key = os.getenv("OPENAI_API_KEY", "")
-        # 如果环境变量里没填地址，默认回退到官方地址
         base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-        # 优先使用传参的模型名，其次选环境变量里的，最后默认用 deepseek-v3
-        model_name = model or os.getenv("AI_MODEL", "deepseek-v3")
+        
+        # 2. 核心修正：优先使用环境变量中的 AI_MODEL
+        # 如果函数调用没传 model，则看环境变量 AI_MODEL，再没有才用 gpt-3.5-turbo
+        model_name = model or os.getenv("AI_MODEL", "gpt-3.5-turbo")
 
-        # 初始化客户端时注入 base_url
+        logger.info(f"正在调用 OpenAI 接口: URL={base_url}, Model={model_name}")
+
         client = OpenAI(api_key=api_key, base_url=base_url)
         
         response = client.chat.completions.create(
@@ -109,7 +113,6 @@ ddef _call_openai(prompt: str, model: str = None) -> str:
     except Exception as e:
         logger.error(f"OpenAI 调用失败: {e}")
         raise RuntimeError(f"API 调用错误: {str(e)}")
-
 
 def _call_mock(prompt: str) -> str:
     """Mock AI response for development/testing without API keys."""
@@ -150,15 +153,16 @@ def _call_mock(prompt: str) -> str:
 
 
 def _call_ai(prompt: str) -> str:
-    """Route AI call to the configured backend."""
+    """路由 AI 调用"""
     backend = AI_BACKEND.lower()
 
     if backend == "dashscope" and DASHSCOPE_API_KEY:
         return _call_dashscope(prompt)
-    elif backend == "openai" and OPENAI_API_KEY:
+    elif backend == "openai" and os.getenv("OPENAI_API_KEY"):
+        # 修正：这里不传参数，让 _call_openai 内部去读环境变量
         return _call_openai(prompt)
     else:
-        logger.warning("No AI API key configured, using mock responses")
+        logger.warning("未配置有效的 AI API Key，使用 mock 响应")
         return _call_mock(prompt)
 
 
