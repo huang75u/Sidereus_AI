@@ -84,20 +84,31 @@ def _call_dashscope(prompt: str, model: str = None) -> str:
         raise RuntimeError("dashscope package not installed. Run: pip install dashscope")
 
 
-def _call_openai(prompt: str, model: str = "gpt-3.5-turbo") -> str:
-    """Call OpenAI API as fallback."""
+ddef _call_openai(prompt: str, model: str = None) -> str:
+    """调用 OpenAI 兼容接口，适配 Mammouth AI 等第三方聚合商"""
     try:
         from openai import OpenAI
+        import os
 
-        client = OpenAI(api_key=OPENAI_API_KEY)
+        # 读取环境变量
+        api_key = os.getenv("OPENAI_API_KEY", "")
+        # 如果环境变量里没填地址，默认回退到官方地址
+        base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        # 优先使用传参的模型名，其次选环境变量里的，最后默认用 gpt-3.5-turbo
+        model_name = model or os.getenv("AI_MODEL", "gpt-3.5-turbo")
+
+        # 初始化客户端时注入 base_url
+        client = OpenAI(api_key=api_key, base_url=base_url)
+        
         response = client.chat.completions.create(
-            model=model,
+            model=model_name,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
         )
         return response.choices[0].message.content
-    except ImportError:
-        raise RuntimeError("openai package not installed")
+    except Exception as e:
+        logger.error(f"OpenAI 调用失败: {e}")
+        raise RuntimeError(f"API 调用错误: {str(e)}")
 
 
 def _call_mock(prompt: str) -> str:
