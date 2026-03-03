@@ -94,8 +94,8 @@ ddef _call_openai(prompt: str, model: str = None) -> str:
         api_key = os.getenv("OPENAI_API_KEY", "")
         # 如果环境变量里没填地址，默认回退到官方地址
         base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-        # 优先使用传参的模型名，其次选环境变量里的，最后默认用 gpt-3.5-turbo
-        model_name = model or os.getenv("AI_MODEL", "gpt-3.5-turbo")
+        # 优先使用传参的模型名，其次选环境变量里的，最后默认用 deepseek-v3
+        model_name = model or os.getenv("AI_MODEL", "deepseek-v3")
 
         # 初始化客户端时注入 base_url
         client = OpenAI(api_key=api_key, base_url=base_url)
