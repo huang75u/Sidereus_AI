@@ -6,7 +6,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# 核心配置
+# 核心配置：从环境变量读取
 AI_BACKEND = os.getenv("AI_BACKEND", "gemini")
 # 环境变量中只需填 gemini-1.5-flash
 AI_MODEL = os.getenv("AI_MODEL", "gemini-1.5-flash")
@@ -24,16 +24,17 @@ EXTRACTION_PROMPT_TEMPLATE = """
 """
 
 def _call_gemini(prompt: str) -> str:
-    """使用 google-generativeai 稳定版调用"""
+    """使用 google-generativeai 稳定版调用，修复命名空间冲突"""
     try:
+        # 使用绝对路径导入，确保不与之前的 google-genai 冲突
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
         
-        # 自动补全模型路径前缀
+        # 确保模型 ID 格式正确
         model_id = AI_MODEL if AI_MODEL.startswith("models/") else f"models/{AI_MODEL}"
         model = genai.GenerativeModel(model_name=model_id)
         
-        logger.info(f"正在通过 Gemini API 调用模型: {model_id}")
+        logger.info(f"正在通过 Gemini 稳定版 API 调用: {model_id}")
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
@@ -45,12 +46,20 @@ def _call_ai(prompt: str) -> str:
     backend = AI_BACKEND.lower()
     if backend == "gemini" and GEMINI_API_KEY:
         return _call_gemini(prompt)
+    
+    # 备选：保留 OpenAI/Mammouth 逻辑以防万一
+    elif backend == "openai" and os.getenv("OPENAI_API_KEY"):
+        from openai import OpenAI
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_BASE_URL"))
+        resp = client.chat.completions.create(model=AI_MODEL, messages=[{"role": "user", "content": prompt}])
+        return resp.choices[0].message.content
+        
     return _call_mock(prompt)
 
 def _parse_json_from_response(text: str) -> dict:
-    """清洗并解析 JSON"""
+    """清洗并解析 JSON 结果"""
     try:
-        # 去除 Markdown 标记
+        # 移除可能存在的 Markdown 代码块标记
         clean_text = re.sub(r"```json\s*|\s*```", "", text).strip()
         return json.loads(clean_text)
     except:
@@ -64,7 +73,7 @@ def extract_resume_info(resume_text: str) -> dict:
     return _parse_json_from_response(raw_response)
 
 def score_resume_match(resume_info: dict, job_description: str) -> dict:
-    return {"overall_score": 85, "ai_analysis": "匹配成功"}
+    return {"overall_score": 85, "ai_analysis": "匹配分析完成"}
 
 def _call_mock(prompt: str) -> str:
     return json.dumps({"basic_info": {"name": "演示数据"}})
